@@ -11,7 +11,6 @@ body {
 
 h1 {
   text-align: center;
-  margin-bottom: 20px;
 }
 
 h2 {
@@ -23,20 +22,17 @@ h2 {
   display: flex;
   justify-content: center;
   gap: 10px;
-  margin-bottom: 20px;
+  margin: 20px 0;
 }
 
 .add input {
   padding: 10px;
-  font-size: 16px;
   width: 200px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
+  font-size: 16px;
 }
 
 .add button {
   padding: 10px 16px;
-  font-size: 16px;
   background: #2d89ef;
   color: white;
   border: none;
@@ -44,11 +40,7 @@ h2 {
   cursor: pointer;
 }
 
-.add button:hover {
-  background: #1b5fbf;
-}
-
-/* แบ่ง 2 ฝั่ง */
+/* Layout */
 .container {
   display: flex;
   gap: 20px;
@@ -57,23 +49,19 @@ h2 {
 
 .column {
   flex: 1;
-  background: #ffffff;
+  background: white;
   padding: 15px;
   border-radius: 12px;
   box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-/* การ์ดผู้เล่น */
+/* การ์ด */
 .player-card {
   background: #f9fafc;
   padding: 12px;
   border-radius: 10px;
   margin-bottom: 10px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-}
-
-.player-card strong {
-  font-size: 18px;
 }
 
 /* ปุ่ม */
@@ -83,10 +71,6 @@ button {
   border-radius: 6px;
   border: none;
   cursor: pointer;
-}
-
-button:hover {
-  opacity: 0.85;
 }
 
 button.danger {
