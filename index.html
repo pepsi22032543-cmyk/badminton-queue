@@ -3,29 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Badminton Queue Timer</title>
+  <title>🏸 Badminton Queue</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <h1>🏸 คิวสนามแบด</h1>
+  <header>
+    🏸 Badminton Queue
+    <div class="subtitle">ระบบจัดคิวสนามแบดมินตัน</div>
+  </header>
 
-  <div class="add">
+  <section class="add">
     <input id="nameInput" placeholder="ชื่อนักกีฬา">
-    <button onclick="addPlayer()">เพิ่มผู้เล่น</button>
-  </div>
+    <button onclick="addPlayer()">➕ เพิ่มผู้เล่น</button>
+  </section>
 
-  <h2>⏱️ พักอยู่</h2>
-  <ul id="restList"></ul>
-
-  <h2>🔥 กำลังลงสนาม</h2>
-  <ul id="playList"></ul>
+  <section>
+    <h2>📋 รายชื่อผู้เล่น (เรียงตามเวลาพัก)</h2>
+    <div id="playerList"></div>
+  </section>
 
   <script type="module" src="app.js"></script>
-
-  <header>🏸 Badminton Queue</header>
-<div id="playerList"></div>
-
 </body>
 </html>
-
