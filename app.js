@@ -1,92 +1,120 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
-  getFirestore, collection, addDoc,
-  onSnapshot, updateDoc, doc
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  updateDoc,
+  doc,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-// 🔥 ใส่ firebaseConfig ของคุณตรงนี้
+/* 🔥 Firebase config */
 const firebaseConfig = {
-  apiKey: "YOUR_KEY",
-  authDomain: "YOUR_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
+  apiKey: "AIzaSyD0QOhzwkYtMMdkJfe5-bo-PG8MzsVzicY",
+  authDomain: "running-badminton-game.firebaseapp.com",
+  projectId: "running-badminton-game",
+  storageBucket: "running-badminton-game.firebasestorage.app",
+  messagingSenderId: "377042482608",
+  appId: "1:377042482608:web:eaa863b9b9219b71755275",
+  measurementId: "G-BN1J1YZ27T"
 };
 
+/* init */
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const restList = document.getElementById("restList");
-const playList = document.getElementById("playList");
+const playerList = document.getElementById("playerList");
 
-window.addPlayer = async () => {
-  const name = nameInput.value.trim();
+/* ➕ เพิ่มผู้เล่น */
+window.addPlayer = async function () {
+  const input = document.getElementById("nameInput");
+  const name = input.value.trim();
   if (!name) return;
 
   await addDoc(collection(db, "players"), {
     name,
     status: "rest",
-    restStart: Date.now()
+    lastPlayed: serverTimestamp(),
+    createdAt: serverTimestamp()
   });
 
-  nameInput.value = "";
+  input.value = "";
 };
 
-onSnapshot(collection(db, "players"), (snapshot) => {
-  restList.innerHTML = "";
-  playList.innerHTML = "";
-
-  snapshot.forEach(docSnap => {
-    const p = docSnap.data();
-    const li = document.createElement("li");
-
-    if (p.status === "rest") {
-      const min = Math.floor((Date.now() - p.restStart) / 60000);
-      li.innerHTML = `
-        ${p.name} (พัก ${min} นาที)
-        <button onclick="goPlay('${docSnap.id}')">ลงสนาม</button>
-      `;
-      restList.appendChild(li);
-    } else {
-      li.innerHTML = `
-        ${p.name}
-        <button onclick="goRest('${docSnap.id}')">ออกมาพัก</button>
-      `;
-      playList.appendChild(li);
-    }
-  });
-});
-
-window.goPlay = async (id) => {
-  await updateDoc(doc(db, "players", id), {
-    status: "play"
-  });
-};
-
-window.goRest = async (id) => {
-  await updateDoc(doc(db, "players", id), {
-    status: "rest",
-    restStart: Date.now()
-  });
-};
-function getRestMinutes(lastPlayedAt) {
-  if (!lastPlayedAt) return 999; // คนยังไม่เคยเล่น = พักนานสุด
-  const now = Date.now();
-  return Math.floor((now - lastPlayedAt) / 60000);
+/* ⏱ คำนวณเวลาพัก */
+function getRestMinutes(lastPlayed) {
+  if (!lastPlayed) return 0;
+  const diff = Date.now() - lastPlayed.toDate().getTime();
+  return Math.floor(diff / 60000);
 }
-players.sort((a, b) => {
-  return getRestMinutes(b.lastPlayedAt) - getRestMinutes(a.lastPlayedAt);
+
+/* 🔄 เปลี่ยนสถานะ */
+async function toggleStatus(id, status) {
+  const ref = doc(db, "players", id);
+
+  if (status === "rest") {
+    await updateDoc(ref, {
+      status: "playing"
+    });
+  } else {
+    await updateDoc(ref, {
+      status: "rest",
+      lastPlayed: serverTimestamp()
+    });
+  }
+}
+
+/* 📡 ดึงข้อมูล + เรียงเวลาพัก */
+const q = query(collection(db, "players"), orderBy("lastPlayed", "asc"));
+
+onSnapshot(q, (snapshot) => {
+  playerList.innerHTML = "";
+
+  const players = snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+
+  // เรียง: พักนานสุดอยู่บน
+  players.sort((a, b) => {
+    const aRest = getRestMinutes(a.lastPlayed);
+    const bRest = getRestMinutes(b.lastPlayed);
+    return bRest - aRest;
+  });
+
+  players.forEach(player => {
+    const restMin = getRestMinutes(player.lastPlayed);
+
+    const card = document.createElement("div");
+    card.className = "player-card";
+
+    card.innerHTML = `
+      <div>
+        <div class="player-name">${player.name}</div>
+        <div class="player-rest">
+          ${player.status === "playing"
+            ? "🔥 กำลังเล่น"
+            : `⏱️ พัก ${restMin} นาที`}
+        </div>
+      </div>
+      <button style="
+        background:${player.status === "rest" ? "#22c55e" : "#f97316"};
+        border:none;
+        color:black;
+        padding:8px 12px;
+        border-radius:8px;
+        cursor:pointer;
+      ">
+        ${player.status === "rest" ? "ลงสนาม" : "พัก"}
+      </button>
+    `;
+
+    card.querySelector("button").onclick = () =>
+      toggleStatus(player.id, player.status);
+
+    playerList.appendChild(card);
+  });
 });
-const list = document.getElementById("playerList");
-list.innerHTML = "";
-
-players.forEach(player => {
-  const rest = getRestMinutes(player.lastPlayedAt);
-
-  const div = document.createElement("div");
-  div.className = "player-card";
-  div.innerHTML = `
-    <div class="player-name">${player.name}</div>
-    <div class="player-rest">⏱ พัก ${rest} นาที</div>
-  `;
-  list.appendChild(div);
-});
-
