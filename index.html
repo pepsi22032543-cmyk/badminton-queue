@@ -12,16 +12,23 @@
   🏸 Badminton Queue – จอสนาม
 </header>
 
+<!-- เพิ่มผู้เล่น -->
+<section class="add">
+  <input id="nameInput" placeholder="ชื่อนักกีฬา">
+  <button onclick="addPlayer()">➕ เพิ่ม</button>
+  <button class="danger" onclick="deleteSelected()">🗑️ ลบที่เลือก</button>
+</section>
+
 <div class="container">
-  <!-- ฝั่งซ้าย: กำลังลงสนาม -->
+  <!-- ซ้าย -->
   <section class="panel playing">
     <h2>🔥 กำลังลงสนาม</h2>
     <div id="playingList"></div>
   </section>
 
-  <!-- ฝั่งขวา: รอคิว -->
+  <!-- ขวา -->
   <section class="panel waiting">
-    <h2>⏱️ รอคิว (เรียงตามเวลาพัก)</h2>
+    <h2>⏱️ รอคิว</h2>
     <div id="waitingList"></div>
   </section>
 </div>
