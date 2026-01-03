@@ -36,8 +36,8 @@ console.log("FIREBASE READY");
 // 📌 DOM
 // ================================
 const playerList = document.getElementById("playerList");
-const playingBox = document.querySelector(".playing");
-const restingBox = document.querySelector(".resting");
+const playingBox = document.getElementById("playingList");
+const restingBox = document.getElementById("restingList");
 
 // ================================
 // ➕ Add Player
