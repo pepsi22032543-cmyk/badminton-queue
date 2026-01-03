@@ -1,42 +1,37 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <title>🏸 ระบบคิวสนามแบด</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ระบบคิวสนามแบด</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h1>🏸 ระบบคิวสนามแบด</h1>
+  <h1>🏸 ระบบคิวสนามแบด</h1>
 
-<!-- เพิ่มชื่อ -->
-<div class="add">
-  <input id="nameInput" placeholder="ชื่อนักกีฬา">
-  <button onclick="addPlayer()">➕ เพิ่ม</button>
-</div>
-
-<!-- หน้าจอหลัก -->
-<div class="container">
-
-  <!-- ซ้าย: กำลังลงสนาม -->
-  <div class="column">
-    <h2>🔥 กำลังลงสนาม</h2>
-    <div id="playingList"></div>
+  <div class="add">
+    <input id="nameInput" placeholder="ชื่อนักกีฬา">
+    <button onclick="addPlayer()">➕ เพิ่ม</button>
   </div>
 
-  <!-- ขวา: พัก -->
-  <div class="column">
-    <h2>⏱️ พัก / รอคิว</h2>
-    <div id="restList"></div>
+  <div class="container">
+
+    <div class="column">
+      <h2>🔥 กำลังลงสนาม</h2>
+      <div id="playList"></div>
+    </div>
+
+    <div class="column">
+      <h2>⏱️ พัก / รอคิว</h2>
+      <div id="restList"></div>
+    </div>
+
   </div>
 
-</div>
+  <h2>👥 รายชื่อผู้เล่น</h2>
+  <div id="playerList"></div>
 
-<!-- รายชื่อทั้งหมด -->
-<h2>👥 รายชื่อผู้เล่น</h2>
-<div id="poolList"></div>
-
-<script type="module" src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
