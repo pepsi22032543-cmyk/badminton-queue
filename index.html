@@ -8,21 +8,24 @@
 </head>
 <body>
 
-  <header>
-    🏸 Badminton Queue
-    <div class="subtitle">ระบบจัดคิวสนามแบดมินตัน</div>
-  </header>
+<header class="topbar">
+  🏸 Badminton Queue – จอสนาม
+</header>
 
-  <section class="add">
-    <input id="nameInput" placeholder="ชื่อนักกีฬา">
-    <button onclick="addPlayer()">➕ เพิ่มผู้เล่น</button>
+<div class="container">
+  <!-- ฝั่งซ้าย: กำลังลงสนาม -->
+  <section class="panel playing">
+    <h2>🔥 กำลังลงสนาม</h2>
+    <div id="playingList"></div>
   </section>
 
-  <section>
-    <h2>📋 รายชื่อผู้เล่น (เรียงตามเวลาพัก)</h2>
-    <div id="playerList"></div>
+  <!-- ฝั่งขวา: รอคิว -->
+  <section class="panel waiting">
+    <h2>⏱️ รอคิว (เรียงตามเวลาพัก)</h2>
+    <div id="waitingList"></div>
   </section>
+</div>
 
-  <script type="module" src="app.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>
