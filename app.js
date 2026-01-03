@@ -6,11 +6,12 @@ import {
   onSnapshot,
   query,
   updateDoc,
+  deleteDoc,
   doc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 Firebase config */
+/* Firebase config */
 const firebaseConfig = {
   apiKey: "AIzaSyD0QOhzwkYtMMdkJfe5-bo-PG8MzsVzicY",
   authDomain: "running-badminton-game.firebaseapp.com",
@@ -23,12 +24,45 @@ const db = getFirestore(app);
 const playingList = document.getElementById("playingList");
 const waitingList = document.getElementById("waitingList");
 
-/* ⏱️ แปลงเวลาเป็น HH:MM:SS */
+let cachedPlayers = [];
+
+/* ➕ เพิ่มผู้เล่น */
+window.addPlayer = async () => {
+  const input = document.getElementById("nameInput");
+  const name = input.value.trim();
+  if (!name) return;
+
+  await addDoc(collection(db, "players"), {
+    name,
+    status: "rest",
+    lastPlayed: serverTimestamp(),
+    selected: false
+  });
+
+  input.value = "";
+};
+
+/* 🗑️ ลบผู้เล่นที่ติ๊ก */
+window.deleteSelected = async () => {
+  const selected = cachedPlayers.filter(p => p.selected);
+  if (selected.length === 0) {
+    alert("ยังไม่ได้เลือกผู้เล่น");
+    return;
+  }
+
+  if (!confirm(`ลบ ${selected.length} คน ใช่หรือไม่?`)) return;
+
+  for (const p of selected) {
+    await deleteDoc(doc(db, "players", p.id));
+  }
+};
+
+/* ⏱️ แปลงเวลา HH:MM:SS */
 function formatDuration(ms) {
-  const totalSeconds = Math.floor(ms / 1000);
-  const h = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
-  const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
-  const s = String(totalSeconds % 60).padStart(2, "0");
+  const total = Math.floor(ms / 1000);
+  const h = String(Math.floor(total / 3600)).padStart(2, "0");
+  const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+  const s = String(total % 60).padStart(2, "0");
   return `${h}:${m}:${s}`;
 }
 
@@ -46,18 +80,22 @@ async function toggleStatus(id, status) {
   }
 }
 
-/* 📡 ดึงข้อมูล */
-const q = query(collection(db, "players"));
-let cachedPlayers = [];
+/* ☑️ ติ๊กเลือก */
+async function toggleSelect(id, current) {
+  await updateDoc(doc(db, "players", id), {
+    selected: !current
+  });
+}
 
-onSnapshot(q, (snapshot) => {
-  cachedPlayers = snapshot.docs.map(d => ({
+/* 📡 ดึงข้อมูล */
+onSnapshot(query(collection(db, "players")), snap => {
+  cachedPlayers = snap.docs.map(d => ({
     id: d.id,
     ...d.data()
   }));
 });
 
-/* 🔁 อัปเดตจอทุก 1 วินาที */
+/* 🔁 อัปเดตหน้าจอทุกวินาที */
 setInterval(() => {
   playingList.innerHTML = "";
   waitingList.innerHTML = "";
@@ -67,45 +105,40 @@ setInterval(() => {
   const playing = cachedPlayers.filter(p => p.status === "playing");
   const waiting = cachedPlayers.filter(p => p.status !== "playing");
 
-  // เรียงคนรอคิว: พักนานสุดอยู่บน
+  // เรียงรอคิว: พักนานสุดก่อน
   waiting.sort((a, b) => {
-    const aTime = a.lastPlayed?.toDate()?.getTime() || 0;
-    const bTime = b.lastPlayed?.toDate()?.getTime() || 0;
-    return aTime - bTime;
+    const at = a.lastPlayed?.toDate()?.getTime() || 0;
+    const bt = b.lastPlayed?.toDate()?.getTime() || 0;
+    return at - bt;
   });
 
-  playing.forEach(p => {
-    const card = document.createElement("div");
-    card.className = "player-card";
-    card.innerHTML = `
-      <div>
-        <div class="player-name">${p.name}</div>
-        <div class="player-time">🔥 กำลังเล่น</div>
-      </div>
-      <button>พัก</button>
-    `;
-    card.querySelector("button").onclick = () =>
-      toggleStatus(p.id, p.status);
-
-    playingList.appendChild(card);
-  });
-
-  waiting.forEach(p => {
+  const render = (p, container, isPlaying) => {
     const last = p.lastPlayed?.toDate()?.getTime() || now;
-    const duration = formatDuration(now - last);
+    const timeText = isPlaying
+      ? "🔥 กำลังเล่น"
+      : `⏱️ พัก ${formatDuration(now - last)}`;
 
-    const card = document.createElement("div");
-    card.className = "player-card";
-    card.innerHTML = `
-      <div>
-        <div class="player-name">${p.name}</div>
-        <div class="player-time">⏱️ พัก ${duration}</div>
-      </div>
-      <button>ลงสนาม</button>
+    const div = document.createElement("div");
+    div.className = "player-card";
+    div.innerHTML = `
+      <label>
+        <input type="checkbox" ${p.selected ? "checked" : ""}>
+        <strong>${p.name}</strong>
+      </label>
+      <div class="player-time">${timeText}</div>
+      <button>${isPlaying ? "พัก" : "ลงสนาม"}</button>
     `;
-    card.querySelector("button").onclick = () =>
+
+    div.querySelector("input").onclick = () =>
+      toggleSelect(p.id, p.selected);
+
+    div.querySelector("button").onclick = () =>
       toggleStatus(p.id, p.status);
 
-    waitingList.appendChild(card);
-  });
+    container.appendChild(div);
+  };
+
+  playing.forEach(p => render(p, playingList, true));
+  waiting.forEach(p => render(p, waitingList, false));
+
 }, 1000);
