@@ -1,44 +1,42 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>🏸 Badminton Queue</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<header class="topbar">
-  🏸 Badminton Queue – จอสนาม
-</header>
-<!-- เพิ่มผู้เล่น -->
-<section class="add">
-  <input id="nameInput" placeholder="ชื่อนักกีฬา">
-  <button onclick="addPlayer()">➕ เพิ่ม</button>
-  <button class="danger" onclick="deleteSelected()">🗑️ ลบที่เลือก</button>
-</section>
+  <h1>🏸 ระบบคิวสนามแบด</h1>
 
-<div class="container">
-  <!-- ซ้าย -->
-  <section class="panel playing">
-    <h2>🔥 กำลังลงสนาม</h2>
-    <div id="playingList"></div>
-  </section>
+  <!-- เพิ่มผู้เล่น -->
+  <div class="add">
+    <input id="nameInput" placeholder="ชื่อนักกีฬา">
+    <button onclick="addPlayer()">➕ เพิ่มผู้เล่น</button>
+  </div>
 
-  <!-- ขวา -->
-  <section class="panel waiting">
-    <h2>⏱️ รอคิว</h2>
-    <div id="waitingList"></div>
-  </section>
-  
-<section class="panel">
+  <!-- หน้าจอหลัก -->
+  <div class="container">
+
+    <!-- ฝั่งซ้าย -->
+    <div class="column">
+      <h2>🔥 กำลังลงสนาม</h2>
+      <div id="playingList"></div>
+    </div>
+
+    <!-- ฝั่งขวา -->
+    <div class="column">
+      <h2>⏱️ พัก / รอคิว</h2>
+      <div id="restList"></div>
+    </div>
+
+  </div>
+
+  <!-- รายชื่อทั้งหมด -->
   <h2>👥 รายชื่อผู้เล่น</h2>
   <div id="poolList"></div>
-</section>
-</div>
-<button onclick="showSummary()">📊 สรุปผล</button>
-<div id="summary"></div>
 
-<script type="module" src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
