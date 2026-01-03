@@ -1,163 +1,157 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getFirestore,
-  collection,
-  addDoc,
-  doc,
-  updateDoc,
-  deleteDoc,
-  onSnapshot,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+  getFirestore, collection, addDoc, updateDoc, doc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* 🔹 Firebase Config */
+/* 🔥 Firebase config */
 const firebaseConfig = {
-  apiKey: "AIzaSyD0QOhzwkYtMMdkJfe5-bo-PG8MzsVzicY",
-  authDomain: "running-badminton-game.firebaseapp.com",
-  projectId: "running-badminton-game",
-  storageBucket: "running-badminton-game.firebasestorage.app",
-  messagingSenderId: "377042482608",
-  appId: "1:377042482608:web:eaa863b9b9219b71755275"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_PROJECT_ID"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* 🔹 DOM */
-const poolList = document.getElementById("playerList");
-const playingList = document.getElementById("playList");
+const playerList = document.getElementById("playerList");
+const playList = document.getElementById("playList");
 const restList = document.getElementById("restList");
 
-/* 🔹 เพิ่มผู้เล่น */
+/* ================= ADD PLAYER ================= */
 window.addPlayer = async () => {
-  const name = document.getElementById("nameInput").value.trim();
+  const name = nameInput.value.trim();
   if (!name) return;
 
   await addDoc(collection(db, "players"), {
     name,
-    status: "pool",
+    status: "waiting",
+    startTime: null,
     games: 0,
-    shuttles: 0,
-    lastPlayed: null,
-    createdAt: serverTimestamp()
+    shuttles: 0
   });
 
-  document.getElementById("nameInput").value = "";
+  nameInput.value = "";
 };
 
-/* 🔹 Render ผู้เล่น */
-function renderPlayer(docSnap) {
-  const p = docSnap.data();
-  const id = docSnap.id;
+/* ================= TIME FORMAT ================= */
+function formatTime(ms) {
+  if (!ms) return "00:00:00";
+  const total = Math.floor(ms / 1000);
+  const h = String(Math.floor(total / 3600)).padStart(2, "0");
+  const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+  const s = String(total % 60).padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
+/* ================= ACTIONS ================= */
+async function setStatus(id, status, incGame = false) {
+  await updateDoc(doc(db, "players", id), {
+    status,
+    startTime: Date.now(),
+    games: incGame ? 1 : undefined
+  });
+}
+
+async function addShuttle(id, delta) {
+  await updateDoc(doc(db, "players", id), {
+    shuttles: Math.max(0, delta)
+  });
+}
+
+async function admitBack(id) {
+  await updateDoc(doc(db, "players", id), {
+    status: "waiting",
+    startTime: null
+  });
+}
+
+/* ================= RENDER ================= */
+function renderPlayer(p, id) {
+  const elapsed = p.startTime ? formatTime(Date.now() - p.startTime) : "-";
 
   const div = document.createElement("div");
-  div.className = "player-card";
+  div.className = "card";
 
-  /* ⏱ เวลา */
-  let timeText = "";
-  if (p.lastPlayed) {
-    const diff = Math.floor((Date.now() - p.lastPlayed.toMillis()) / 1000);
-    const h = String(Math.floor(diff / 3600)).padStart(2, "0");
-    const m = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
-    const s = String(diff % 60).padStart(2, "0");
-    timeText = `${h}:${m}:${s}`;
-  }
+  div.innerHTML = `
+    <strong>${p.name}</strong><br>
+    ⏱️ ${elapsed}<br>
+    🎮 ${p.games} เกม | 🏸 ${p.shuttles} ลูก
+    <div class="btns"></div>
+  `;
 
-  /* 🟢 รายชื่อผู้เล่น */
-  if (p.status === "pool") {
-    div.innerHTML = `
-      <strong>${p.name}</strong>
-      <button onclick="startPlay('${id}')">ลงสนาม</button>
-      <button onclick="removePlayer('${id}')">ลบ</button>
+  const btns = div.querySelector(".btns");
+
+  if (p.status === "waiting") {
+    btns.innerHTML = `
+      <button onclick="setPlay('${id}')">ลงสนาม</button>
     `;
-    poolList.appendChild(div);
   }
 
-  /* 🔥 กำลังลงสนาม */
   if (p.status === "playing") {
-    div.innerHTML = `
-      <strong>${p.name}</strong><br>
-      เกม: ${p.games} | ลูก: ${p.shuttles}
-      <div class="btn-row">
-        <button onclick="addShuttle('${id}')">+1 ลูก</button>
-        <button onclick="restPlayer('${id}')">พัก</button>
-      </div>
+    btns.innerHTML = `
+      <button onclick="toRest('${id}')">พัก</button>
+      <button onclick="shuttlePlus('${id}', ${p.shuttles + 1})">➕ ลูก</button>
+      <button onclick="shuttlePlus('${id}', ${p.shuttles - 1})">➖ ลูก</button>
+      <button onclick="admit('${id}')">Admit</button>
+      <button onclick="summary('${p.name}',${p.games},${p.shuttles})">สรุป</button>
     `;
-    playingList.appendChild(div);
   }
 
-  /* ⏱️ รอคิว */
-  if (p.status === "rest") {
-    div.innerHTML = `
-      <strong>${p.name}</strong><br>
-      พักแล้ว: ${timeText}
-      <button onclick="startPlay('${id}')">ลงสนาม</button>
+  if (p.status === "resting") {
+    btns.innerHTML = `
+      <button onclick="setPlay('${id}', true)">ลงสนาม</button>
+      <button onclick="admit('${id}')">Admit</button>
     `;
-    restList.appendChild(div);
   }
+
+  return div;
 }
 
-/* 🔹 Firestore Listener (แก้ bug ชื่อหายแล้ว) */
-onSnapshot(collection(db, "players"), snap => {
-  poolList.innerHTML = "";
-  playingList.innerHTML = "";
-  restList.innerHTML = "";
-
-  const restPlayers = [];
-
-  snap.forEach(d => {
-    if (d.data().status === "rest") restPlayers.push(d);
-    else renderPlayer(d);
-  });
-
-  restPlayers
-    .sort((a, b) =>
-      (Date.now() - b.data().lastPlayed?.toMillis()) -
-      (Date.now() - a.data().lastPlayed?.toMillis())
-    )
-    .forEach(renderPlayer);
-});
-
-/* 🔹 Actions */
-window.startPlay = async (id) => {
+/* ================= GLOBAL FUNCTIONS ================= */
+window.setPlay = async (id, inc = false) => {
   await updateDoc(doc(db, "players", id), {
     status: "playing",
-    games: (await getCount(id, "games")) + 1
+    startTime: Date.now(),
+    games: inc ? increment(1) : undefined
   });
 };
 
-window.restPlayer = async (id) => {
+window.toRest = async id => {
   await updateDoc(doc(db, "players", id), {
-    status: "rest",
-    lastPlayed: serverTimestamp()
+    status: "resting",
+    startTime: Date.now()
   });
 };
 
-window.addShuttle = async (id) => {
+window.shuttlePlus = async (id, value) => {
   await updateDoc(doc(db, "players", id), {
-    shuttles: (await getCount(id, "shuttles")) + 1
+    shuttles: Math.max(0, value)
   });
 };
 
-window.removePlayer = async (id) => {
-  await deleteDoc(doc(db, "players", id));
+window.admit = admitBack;
+
+window.summary = (name, games, shuttles) => {
+  alert(`📊 ${name}\n\n🎮 เล่น: ${games} เกม\n🏸 ใช้ลูก: ${shuttles} ลูก`);
 };
 
-/* 🔹 Helper */
-async function getCount(id, field) {
-  const snap = await import(
-    "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js"
-  ).then(m => m.getDoc(doc(db, "players", id)));
-  return snap.data()[field] || 0;
-}
+/* ================= REALTIME UPDATE ================= */
+setInterval(() => {
+  document.querySelectorAll(".card").forEach(() => {});
+}, 1000);
 
-/* 🔹 Auto Reset 05:00 */
-setInterval(async () => {
-  const now = new Date();
-  if (now.getHours() === 5 && now.getMinutes() === 0) {
-    const snap = await import(
-      "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js"
-    ).then(m => m.getDocs(collection(db, "players")));
-    snap.forEach(d => deleteDoc(d.ref));
-  }
-}, 60000);
+/* ================= SNAPSHOT ================= */
+onSnapshot(collection(db, "players"), snap => {
+  playerList.innerHTML = "";
+  playList.innerHTML = "";
+  restList.innerHTML = "";
+
+  snap.forEach(docu => {
+    const p = docu.data();
+    const card = renderPlayer(p, docu.id);
+
+    if (p.status === "waiting") playerList.appendChild(card);
+    if (p.status === "playing") playList.appendChild(card);
+    if (p.status === "resting") restList.appendChild(card);
+  });
+});
