@@ -3,155 +3,161 @@ import {
   getFirestore,
   collection,
   addDoc,
-  onSnapshot,
   doc,
   updateDoc,
   deleteDoc,
-  serverTimestamp,
-  getDocs
+  onSnapshot,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* 🔥 Firebase */
+/* 🔹 Firebase Config */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID"
+  apiKey: "AIzaSyD0QOhzwkYtMMdkJfe5-bo-PG8MzsVzicY",
+  authDomain: "running-badminton-game.firebaseapp.com",
+  projectId: "running-badminton-game",
+  storageBucket: "running-badminton-game.firebasestorage.app",
+  messagingSenderId: "377042482608",
+  appId: "1:377042482608:web:eaa863b9b9219b71755275"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* DOM */
-const nameInput = document.getElementById("nameInput");
-const poolList = document.getElementById("poolList");
-const playingList = document.getElementById("playingList");
+/* 🔹 DOM */
+const poolList = document.getElementById("playerList");
+const playingList = document.getElementById("playList");
 const restList = document.getElementById("restList");
 
-/* เพิ่มผู้เล่น */
+/* 🔹 เพิ่มผู้เล่น */
 window.addPlayer = async () => {
-  const name = nameInput.value.trim();
+  const name = document.getElementById("nameInput").value.trim();
   if (!name) return;
 
   await addDoc(collection(db, "players"), {
     name,
     status: "pool",
-    gamesPlayed: 0,
-    shuttleUsed: 0,
-    currentShuttle: 0,
-    lastPlayed: null
+    games: 0,
+    shuttles: 0,
+    lastPlayed: null,
+    createdAt: serverTimestamp()
   });
 
-  nameInput.value = "";
+  document.getElementById("nameInput").value = "";
 };
 
-/* เวลา HH:MM:SS */
-function formatDuration(ms) {
-  const sec = Math.floor(ms / 1000);
-  const h = String(Math.floor(sec / 3600)).padStart(2, "0");
-  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
-  const s = String(sec % 60).padStart(2, "0");
-  return `${h}:${m}:${s}`;
-}
+/* 🔹 Render ผู้เล่น */
+function renderPlayer(docSnap) {
+  const p = docSnap.data();
+  const id = docSnap.id;
 
-/* Render */
-function renderPlayer(d) {
-  const p = d.data();
-  const id = d.id;
   const div = document.createElement("div");
   div.className = "player-card";
 
-  /* รายชื่อ */
+  /* ⏱ เวลา */
+  let timeText = "";
+  if (p.lastPlayed) {
+    const diff = Math.floor((Date.now() - p.lastPlayed.toMillis()) / 1000);
+    const h = String(Math.floor(diff / 3600)).padStart(2, "0");
+    const m = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
+    const s = String(diff % 60).padStart(2, "0");
+    timeText = `${h}:${m}:${s}`;
+  }
+
+  /* 🟢 รายชื่อผู้เล่น */
   if (p.status === "pool") {
     div.innerHTML = `
-      <strong>${p.name}</strong><br>
-      <button>ลงสนาม</button>
-      <button class="danger">ลบ</button>
+      <strong>${p.name}</strong>
+      <button onclick="startPlay('${id}')">ลงสนาม</button>
+      <button onclick="removePlayer('${id}')">ลบ</button>
     `;
-    div.children[1].onclick = () =>
-      updateDoc(doc(db, "players", id), {
-        status: "playing",
-        gamesPlayed: p.gamesPlayed + 1
-      });
-    div.children[2].onclick = () =>
-      deleteDoc(doc(db, "players", id));
     poolList.appendChild(div);
   }
 
-  /* ลงสนาม */
+  /* 🔥 กำลังลงสนาม */
   if (p.status === "playing") {
     div.innerHTML = `
       <strong>${p.name}</strong><br>
-      🏸 ลูก: ${p.currentShuttle}<br>
-      <button>➕ ลูก</button>
-      <button>➖ ลูก</button>
-      <button class="danger">พัก</button>
+      เกม: ${p.games} | ลูก: ${p.shuttles}
+      <div class="btn-row">
+        <button onclick="addShuttle('${id}')">+1 ลูก</button>
+        <button onclick="restPlayer('${id}')">พัก</button>
+      </div>
     `;
-    div.children[2].onclick = () =>
-      updateDoc(doc(db, "players", id), {
-        currentShuttle: p.currentShuttle + 1,
-        shuttleUsed: p.shuttleUsed + 1
-      });
-    div.children[3].onclick = () =>
-      p.currentShuttle > 0 &&
-      updateDoc(doc(db, "players", id), {
-        currentShuttle: p.currentShuttle - 1
-      });
-    div.children[4].onclick = () =>
-      updateDoc(doc(db, "players", id), {
-        status: "rest",
-        lastPlayed: serverTimestamp(),
-        currentShuttle: 0
-      });
     playingList.appendChild(div);
   }
 
-  /* พัก */
+  /* ⏱️ รอคิว */
   if (p.status === "rest") {
-    const restMs = p.lastPlayed
-      ? Date.now() - p.lastPlayed.toMillis()
-      : 0;
     div.innerHTML = `
       <strong>${p.name}</strong><br>
-      ⏱️ พัก: ${formatDuration(restMs)}<br>
-      <button>ลงสนาม</button>
+      พักแล้ว: ${timeText}
+      <button onclick="startPlay('${id}')">ลงสนาม</button>
     `;
-    div.children[2].onclick = () =>
-      updateDoc(doc(db, "players", id), {
-        status: "playing",
-        gamesPlayed: p.gamesPlayed + 1
-      });
-    div.dataset.rest = restMs;
     restList.appendChild(div);
   }
 }
 
-/* Realtime */
+/* 🔹 Firestore Listener (แก้ bug ชื่อหายแล้ว) */
 onSnapshot(collection(db, "players"), snap => {
   poolList.innerHTML = "";
   playingList.innerHTML = "";
   restList.innerHTML = "";
 
-  const rest = [];
+  const restPlayers = [];
+
   snap.forEach(d => {
-    if (d.data().status === "rest") rest.push(d);
+    if (d.data().status === "rest") restPlayers.push(d);
     else renderPlayer(d);
   });
 
-  rest.sort((a, b) =>
-    (Date.now() - b.data().lastPlayed?.toMillis()) -
-    (Date.now() - a.data().lastPlayed?.toMillis())
-  ).forEach(renderPlayer);
+  restPlayers
+    .sort((a, b) =>
+      (Date.now() - b.data().lastPlayed?.toMillis()) -
+      (Date.now() - a.data().lastPlayed?.toMillis())
+    )
+    .forEach(renderPlayer);
 });
 
-/* Auto Reset 05:00 */
-(async function autoReset() {
+/* 🔹 Actions */
+window.startPlay = async (id) => {
+  await updateDoc(doc(db, "players", id), {
+    status: "playing",
+    games: (await getCount(id, "games")) + 1
+  });
+};
+
+window.restPlayer = async (id) => {
+  await updateDoc(doc(db, "players", id), {
+    status: "rest",
+    lastPlayed: serverTimestamp()
+  });
+};
+
+window.addShuttle = async (id) => {
+  await updateDoc(doc(db, "players", id), {
+    shuttles: (await getCount(id, "shuttles")) + 1
+  });
+};
+
+window.removePlayer = async (id) => {
+  await deleteDoc(doc(db, "players", id));
+};
+
+/* 🔹 Helper */
+async function getCount(id, field) {
+  const snap = await import(
+    "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js"
+  ).then(m => m.getDoc(doc(db, "players", id)));
+  return snap.data()[field] || 0;
+}
+
+/* 🔹 Auto Reset 05:00 */
+setInterval(async () => {
   const now = new Date();
-  const today = now.toISOString().split("T")[0];
-  if (now.getHours() >= 5 && localStorage.getItem("reset") !== today) {
-    const snap = await getDocs(collection(db, "players"));
-    for (const d of snap.docs) {
-      await deleteDoc(doc(db, "players", d.id));
-    }
-    localStorage.setItem("reset", today);
+  if (now.getHours() === 5 && now.getMinutes() === 0) {
+    const snap = await import(
+      "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js"
+    ).then(m => m.getDocs(collection(db, "players")));
+    snap.forEach(d => deleteDoc(d.ref));
   }
-})();
+}, 60000);
