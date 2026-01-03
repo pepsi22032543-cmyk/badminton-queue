@@ -1,73 +1,22 @@
-body {
-  margin: 0;
-  font-family: 'Segoe UI', sans-serif;
-  background: #020617;
-  color: #e5e7eb;
+.add {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  justify-content: center;
 }
 
-.topbar {
-  background: linear-gradient(90deg, #16a34a, #22c55e);
-  padding: 16px;
-  font-size: 24px;
-  font-weight: bold;
-  text-align: center;
-}
-
-.container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  height: calc(100vh - 64px);
-}
-
-.panel {
-  padding: 16px;
-  overflow-y: auto;
-}
-
-.playing {
-  border-right: 2px solid #064e3b;
-}
-
-h2 {
-  margin-top: 0;
-  text-align: center;
-  font-size: 22px;
+.add .danger {
+  background: #dc2626;
+  color: white;
 }
 
 .player-card {
-  background: #020617;
-  border-left: 6px solid #22c55e;
-  padding: 14px 18px;
-  border-radius: 12px;
-  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.player-card label {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-}
-
-.playing .player-card {
-  border-left-color: #f97316;
-}
-
-.player-name {
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.player-time {
-  font-size: 16px;
-  color: #a3e635;
-}
-
-button {
-  background: #22c55e;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 14px;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.playing button {
-  background: #f97316;
+  gap: 8px;
+  font-size: 18px;
 }
