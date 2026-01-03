@@ -4,141 +4,174 @@ import {
   collection,
   addDoc,
   onSnapshot,
-  query,
+  doc,
   updateDoc,
   deleteDoc,
-  doc,
-  serverTimestamp
+  serverTimestamp,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-/* Firebase config */
+/* 🔥 Firebase Config */
 const firebaseConfig = {
-  apiKey: "AIzaSyD0QOhzwkYtMMdkJfe5-bo-PG8MzsVzicY",
-  authDomain: "running-badminton-game.firebaseapp.com",
-  projectId: "running-badminton-game"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT",
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+/* 📦 DOM */
+const nameInput = document.getElementById("nameInput");
+const poolList = document.getElementById("poolList");
 const playingList = document.getElementById("playingList");
-const waitingList = document.getElementById("waitingList");
-
-let cachedPlayers = [];
+const restList = document.getElementById("restList");
 
 /* ➕ เพิ่มผู้เล่น */
 window.addPlayer = async () => {
-  const input = document.getElementById("nameInput");
-  const name = input.value.trim();
+  const name = nameInput.value.trim();
   if (!name) return;
 
   await addDoc(collection(db, "players"), {
     name,
-    status: "rest",
-    lastPlayed: serverTimestamp(),
-    selected: false
+    status: "pool",
+    gamesPlayed: 0,
+    shuttleUsed: 0,
+    currentShuttle: 0,
+    lastPlayed: null
   });
 
-  input.value = "";
+  nameInput.value = "";
 };
 
-/* 🗑️ ลบผู้เล่นที่ติ๊ก */
-window.deleteSelected = async () => {
-  const selected = cachedPlayers.filter(p => p.selected);
-  if (selected.length === 0) {
-    alert("ยังไม่ได้เลือกผู้เล่น");
-    return;
-  }
-
-  if (!confirm(`ลบ ${selected.length} คน ใช่หรือไม่?`)) return;
-
-  for (const p of selected) {
-    await deleteDoc(doc(db, "players", p.id));
-  }
-};
-
-/* ⏱️ แปลงเวลา HH:MM:SS */
+/* ⏱️ แปลงเวลาเป็น HH:MM:SS */
 function formatDuration(ms) {
-  const total = Math.floor(ms / 1000);
-  const h = String(Math.floor(total / 3600)).padStart(2, "0");
-  const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
-  const s = String(total % 60).padStart(2, "0");
+  const sec = Math.floor(ms / 1000);
+  const h = String(Math.floor(sec / 3600)).padStart(2, "0");
+  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
+  const s = String(sec % 60).padStart(2, "0");
   return `${h}:${m}:${s}`;
 }
 
-/* 🔄 เปลี่ยนสถานะ */
-async function toggleStatus(id, status) {
-  const ref = doc(db, "players", id);
+/* 🎨 Render */
+function renderPlayer(docSnap) {
+  const p = docSnap.data();
+  const id = docSnap.id;
+  const div = document.createElement("div");
+  div.className = "player-card";
 
-  if (status === "rest") {
-    await updateDoc(ref, { status: "playing" });
-  } else {
-    await updateDoc(ref, {
-      status: "rest",
-      lastPlayed: serverTimestamp()
-    });
+  /* 🧍 Player Pool */
+  if (p.status === "pool") {
+    div.innerHTML = `
+      <strong>${p.name}</strong>
+      <button>ลงสนาม</button>
+      <button class="danger">ลบ</button>
+    `;
+
+    div.children[1].onclick = () =>
+      updateDoc(doc(db, "players", id), {
+        status: "playing",
+        gamesPlayed: p.gamesPlayed + 1,
+        currentShuttle: 0
+      });
+
+    div.children[2].onclick = () =>
+      deleteDoc(doc(db, "players", id));
+
+    poolList.appendChild(div);
+  }
+
+  /* 🔥 Playing */
+  if (p.status === "playing") {
+    div.innerHTML = `
+      <strong>${p.name}</strong>
+      <div>🏸 ลูก: ${p.currentShuttle}</div>
+      <button>➕ ลูก</button>
+      <button>➖ ลูก</button>
+      <button class="danger">พัก</button>
+    `;
+
+    div.children[2].onclick = () =>
+      updateDoc(doc(db, "players", id), {
+        currentShuttle: p.currentShuttle + 1,
+        shuttleUsed: p.shuttleUsed + 1
+      });
+
+    div.children[3].onclick = () =>
+      p.currentShuttle > 0 &&
+      updateDoc(doc(db, "players", id), {
+        currentShuttle: p.currentShuttle - 1
+      });
+
+    div.children[4].onclick = () =>
+      updateDoc(doc(db, "players", id), {
+        status: "rest",
+        lastPlayed: serverTimestamp(),
+        currentShuttle: 0
+      });
+
+    playingList.appendChild(div);
+  }
+
+  /* ⏱️ Rest */
+  if (p.status === "rest") {
+    const now = Date.now();
+    const restMs = p.lastPlayed
+      ? now - p.lastPlayed.toMillis()
+      : 0;
+
+    div.innerHTML = `
+      <strong>${p.name}</strong>
+      <div>พัก: ${formatDuration(restMs)}</div>
+      <button>ลงสนาม</button>
+    `;
+
+    div.children[2].onclick = () =>
+      updateDoc(doc(db, "players", id), {
+        status: "playing",
+        gamesPlayed: p.gamesPlayed + 1
+      });
+
+    restList.appendChild(div);
+    div.dataset.rest = restMs;
   }
 }
 
-/* ☑️ ติ๊กเลือก */
-async function toggleSelect(id, current) {
-  await updateDoc(doc(db, "players", id), {
-    selected: !current
-  });
-}
+/* 🔄 Realtime Update */
+onSnapshot(collection(db, "players"), snap => {
+  poolList.innerHTML = "";
+  playingList.innerHTML = "";
+  restList.innerHTML = "";
 
-/* 📡 ดึงข้อมูล */
-onSnapshot(query(collection(db, "players")), snap => {
-  cachedPlayers = snap.docs.map(d => ({
-    id: d.id,
-    ...d.data()
-  }));
+  const restPlayers = [];
+
+  snap.forEach(d => {
+    if (d.data().status === "rest") restPlayers.push(d);
+    else renderPlayer(d);
+  });
+
+  restPlayers
+    .sort((a, b) =>
+      (Date.now() - b.data().lastPlayed?.toMillis()) -
+      (Date.now() - a.data().lastPlayed?.toMillis())
+    )
+    .forEach(renderPlayer);
 });
 
-/* 🔁 อัปเดตหน้าจอทุกวินาที */
-setInterval(() => {
-  playingList.innerHTML = "";
-  waitingList.innerHTML = "";
+/* ⏰ Auto Reset 05:00 */
+async function autoResetAtFiveAM() {
+  const now = new Date();
+  const today = now.toISOString().split("T")[0];
+  const lastReset = localStorage.getItem("lastResetDate");
 
-  const now = Date.now();
+  if (now.getHours() >= 5 && lastReset !== today) {
+    const snap = await getDocs(collection(db, "players"));
+    for (const d of snap.docs) {
+      await deleteDoc(doc(db, "players", d.id));
+    }
+    localStorage.setItem("lastResetDate", today);
+    alert("🔄 Auto Reset เวลา 05:00");
+  }
+}
 
-  const playing = cachedPlayers.filter(p => p.status === "playing");
-  const waiting = cachedPlayers.filter(p => p.status !== "playing");
-
-  // เรียงรอคิว: พักนานสุดก่อน
-  waiting.sort((a, b) => {
-    const at = a.lastPlayed?.toDate()?.getTime() || 0;
-    const bt = b.lastPlayed?.toDate()?.getTime() || 0;
-    return at - bt;
-  });
-
-  const render = (p, container, isPlaying) => {
-    const last = p.lastPlayed?.toDate()?.getTime() || now;
-    const timeText = isPlaying
-      ? "🔥 กำลังเล่น"
-      : `⏱️ พัก ${formatDuration(now - last)}`;
-
-    const div = document.createElement("div");
-    div.className = "player-card";
-    div.innerHTML = `
-      <label>
-        <input type="checkbox" ${p.selected ? "checked" : ""}>
-        <strong>${p.name}</strong>
-      </label>
-      <div class="player-time">${timeText}</div>
-      <button>${isPlaying ? "พัก" : "ลงสนาม"}</button>
-    `;
-
-    div.querySelector("input").onclick = () =>
-      toggleSelect(p.id, p.selected);
-
-    div.querySelector("button").onclick = () =>
-      toggleStatus(p.id, p.status);
-
-    container.appendChild(div);
-  };
-
-  playing.forEach(p => render(p, playingList, true));
-  waiting.forEach(p => render(p, waitingList, false));
-
-}, 1000);
+autoResetAtFiveAM();
