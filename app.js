@@ -1,26 +1,47 @@
+// ================================
+// 🔥 Firebase Import
+// ================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
 import {
   getFirestore,
   collection,
-  addDoc
+  addDoc,
+  onSnapshot,
+  updateDoc,
+  doc,
+  query,
+  orderBy
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
-console.log("APP.JS WORKING");
-
-// 🔹 config ของคุณ
+// ================================
+// 🔧 Firebase Config
+// ================================
 const firebaseConfig = {
   apiKey: "AIzaSyXXXX",
   authDomain: "running-badminton-game.firebaseapp.com",
   projectId: "running-badminton-game",
 };
 
-// 🔹 init
+// ================================
+// 🚀 Init Firebase
+// ================================
+console.log("APP.JS WORKING");
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-console.log("FIREBASE READY", db);
+console.log("FIREBASE READY");
 
-// 🔹 expose function ให้ปุ่มเรียก
+// ================================
+// 📌 DOM
+// ================================
+const playerList = document.getElementById("playerList");
+const playingBox = document.querySelector(".playing");
+const restingBox = document.querySelector(".resting");
+
+// ================================
+// ➕ Add Player
+// ================================
 window.addPlayer = async function () {
   const input = document.getElementById("nameInput");
   const name = input.value.trim();
@@ -30,18 +51,101 @@ window.addPlayer = async function () {
     return;
   }
 
-  try {
-    await addDoc(collection(db, "players"), {
-      name: name,
-      status: "idle",
-      games: 0,
-      shuttles: 0,
-      createdAt: Date.now()
-    });
+  await addDoc(collection(db, "players"), {
+    name,
+    status: "idle", // idle | playing | rest
+    games: 0,
+    shuttles: 0,
+    createdAt: Date.now()
+  });
 
-    console.log("SAVED:", name);
-    input.value = "";
-  } catch (e) {
-    console.error("ERROR:", e);
-  }
+  input.value = "";
 };
+
+// ================================
+// 🔄 Realtime Listener
+// ================================
+const q = query(
+  collection(db, "players"),
+  orderBy("createdAt", "asc")
+);
+
+onSnapshot(q, (snapshot) => {
+  playerList.innerHTML = "";
+  playingBox.innerHTML = "";
+  restingBox.innerHTML = "";
+
+  snapshot.forEach((docSnap) => {
+    const p = docSnap.data();
+    const id = docSnap.id;
+
+    const el = document.createElement("div");
+    el.className = "player";
+    el.innerHTML = `
+      <b>${p.name}</b><br>
+      🎮 ${p.games} เกม | 🏸 ${p.shuttles} ลูก<br>
+      ${renderButtons(id, p.status)}
+    `;
+
+    if (p.status === "playing") {
+      playingBox.appendChild(el);
+    } else if (p.status === "rest") {
+      restingBox.appendChild(el);
+    } else {
+      playerList.appendChild(el);
+    }
+  });
+});
+
+// ================================
+// 🎛 Buttons
+// ================================
+function renderButtons(id, status) {
+  if (status === "idle") {
+    return `<button onclick="toPlaying('${id}')">ลงสนาม</button>`;
+  }
+
+  if (status === "playing") {
+    return `
+      <button onclick="finishGame('${id}')">จบเกม</button>
+      <button onclick="addShuttle('${id}')">- ลูกแบด</button>
+    `;
+  }
+
+  if (status === "rest") {
+    return `<button onclick="toIdle('${id}')">กลับเข้าคิว</button>`;
+  }
+}
+
+// ================================
+// 🔁 Status Actions
+// ================================
+window.toPlaying = async function (id) {
+  await updateDoc(doc(db, "players", id), {
+    status: "playing"
+  });
+};
+
+window.finishGame = async function (id) {
+  await updateDoc(doc(db, "players", id), {
+    status: "rest",
+    games: increment(1)
+  });
+};
+
+window.toIdle = async function (id) {
+  await updateDoc(doc(db, "players", id), {
+    status: "idle"
+  });
+};
+
+window.addShuttle = async function (id) {
+  await updateDoc(doc(db, "players", id), {
+    shuttles: increment(1)
+  });
+};
+
+// ================================
+// ➕ Increment Helper
+// ================================
+import { increment } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
