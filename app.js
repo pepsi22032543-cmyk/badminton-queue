@@ -67,4 +67,26 @@ window.goRest = async (id) => {
     restStart: Date.now()
   });
 };
+function getRestMinutes(lastPlayedAt) {
+  if (!lastPlayedAt) return 999; // คนยังไม่เคยเล่น = พักนานสุด
+  const now = Date.now();
+  return Math.floor((now - lastPlayedAt) / 60000);
+}
+players.sort((a, b) => {
+  return getRestMinutes(b.lastPlayedAt) - getRestMinutes(a.lastPlayedAt);
+});
+const list = document.getElementById("playerList");
+list.innerHTML = "";
+
+players.forEach(player => {
+  const rest = getRestMinutes(player.lastPlayedAt);
+
+  const div = document.createElement("div");
+  div.className = "player-card";
+  div.innerHTML = `
+    <div class="player-name">${player.name}</div>
+    <div class="player-rest">⏱ พัก ${rest} นาที</div>
+  `;
+  list.appendChild(div);
+});
 
